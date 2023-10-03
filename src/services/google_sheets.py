@@ -5,6 +5,8 @@ from googleapiclient.discovery import build
 from typing import List, Any
 from google.auth.transport.requests import Request
 from .chatgpt import generate_response  # make sure to import generate_response from chatgpt.py
+from datetime import datetime
+
 
 
 # If modifying these SCOPES, delete the file token.json.
@@ -15,7 +17,7 @@ SAMPLE_SPREADSHEET_ID = '1O4fKy9WYVEljNWQjC73mf3WBcIBnC_sOOZNnQhLg_pc'
 SAMPLE_RANGE_NAME = 'Sheet1!A1:C500'  # Adjust according to your sheet's range.
 
 # Path to credentials.json
-CREDENTIALS_FILE_PATH = 'resources/credentials.json'
+CREDENTIALS_FILE_PATH = 'C:/Users/ferna/OneDrive/Escritorio/MyTelegramBot/resources/credentials.json'
 
 
 def service_gsheets():
@@ -25,7 +27,7 @@ def service_gsheets():
     creds = None
     # The file token.json stores the user's access and refresh tokens and is
     # created automatically when the authorization flow completes for the first time.
-    token_path = 'resources/token.json'
+    token_path = 'C:/Users/ferna/OneDrive/Escritorio/MyTelegramBot/resources/token.json'
     if os.path.exists(token_path):
         creds = Credentials.from_authorized_user_file(token_path, SCOPES)
     # If there are no (valid) credentials available, let the user log in.
@@ -73,7 +75,7 @@ def write_to_sheet(spreadsheet_id: str, column: str, values: List[List[Any]]):
 
         # ChatGPT prompt for column B
         user_message = values[0][0]
-        chatgpt_prompt_b = f"Escribe la categoria del siguiente texto bajo las siguientes opciones [Supermercado] [Verdulería] [Gas]: {user_message}"
+        chatgpt_prompt_b = f"Escribe unicamente y, sin incluir comillas, la categoria del siguiente texto bajo las siguientes opciones: 'Agua' 'Luz' 'Gas' 'Impuestos Municipales' 'Impuestos Provinciales' 'Internet' 'Expensas' 'Nafta' 'Salidas' 'Verduleria' 'Carniceria' 'Supermercado' 'Alarma 'Jardineria' 'Otros': {user_message} (antes de enviar el resultado, asegurarse que sea sin comillas)"
         chatgpt_response_b = generate_response(chatgpt_prompt_b)
 
         # Writing response to column B
@@ -81,12 +83,86 @@ def write_to_sheet(spreadsheet_id: str, column: str, values: List[List[Any]]):
                                 body={'values': [[chatgpt_response_b]]}, valueInputOption='RAW').execute()
 
         # ChatGPT prompt for column C
-        chatgpt_prompt_c = f"Escribe el numero que esta asociado al siguiente texto: {user_message}"
+        chatgpt_prompt_c = f"Escribe unicamente el numero que esta asociado al siguiente texto: {user_message}"
         chatgpt_response_c = generate_response(chatgpt_prompt_c)
+
+        # Convert response to number
+        try:
+            chatgpt_response_c = float(chatgpt_response_c)  # convert to float; or use int() if you know it's an integer
+        except ValueError:
+            # Handle the case where the response is not a valid number.
+            pass  # or log an error message or handle differently as per your needs
+
 
         # Writing response to column C
         service.values().update(spreadsheetId=spreadsheet_id, range=f'C{first_empty_row}',
                                 body={'values': [[chatgpt_response_c]]}, valueInputOption='RAW').execute()
+
+        # ...
+
+        # ChatGPT prompt for column D
+        chatgpt_prompt_d = f"Escribe unicamente el segundo numero que hace referencia el siguiente mensaje (en caso de no haber segundo numero, colocar 1): {user_message}"
+        chatgpt_response_d = generate_response(chatgpt_prompt_d)
+
+        # Convert response to number
+        try:
+            chatgpt_response_d = int(chatgpt_response_d)  # convert to int
+        except ValueError:
+            # Handle the case where the response is not a valid number.
+            pass  # or log an error message or handle differently as per your needs
+
+        # Writing response to column D
+        service.values().update(spreadsheetId=spreadsheet_id, range=f'D{first_empty_row}',
+                                body={'values': [[chatgpt_response_d]]}, valueInputOption='RAW').execute()
+
+        # ...
+
+        # Getting current date and time and formatting it correctly
+        current_datetime = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+        # Writing formatted date and time to column E
+        service.values().update(spreadsheetId=spreadsheet_id, range=f'E{first_empty_row}',
+                                body={'values': [[current_datetime]]}, valueInputOption='USER_ENTERED').execute()
+        # Get the response from column D
+        divide_by = chatgpt_response_d
+
+        # Parse the date from column E
+        current_datetime = datetime.now()
+
+        for i in range(divide_by):
+            # Calculate the amount for each month
+            divided_amount = chatgpt_response_c / divide_by
+
+            # Write to the sheet
+            new_row_index = first_empty_row + i  # Increment row index for each iteration
+
+            # Repeat the value in columns A and B
+            service.values().update(spreadsheetId=spreadsheet_id, range=f'A{new_row_index}',
+                                    body={'values': [[values[0][0]]]}, valueInputOption='RAW').execute()
+            service.values().update(spreadsheetId=spreadsheet_id, range=f'B{new_row_index}',
+                                    body={'values': [[chatgpt_response_b]]}, valueInputOption='RAW').execute()
+
+            # Writing response to column C with divided amount
+            service.values().update(spreadsheetId=spreadsheet_id, range=f'C{new_row_index}',
+                                    body={'values': [[divided_amount]]}, valueInputOption='RAW').execute()
+
+            # Format and write date to column E with incremented month
+            incremented_month_datetime = current_datetime.replace(month=((current_datetime.month - 1 + i) % 12) + 1)
+            if i > 0 and incremented_month_datetime.month == 1:  # Handle year increment
+                incremented_month_datetime = incremented_month_datetime.replace(
+                    year=incremented_month_datetime.year + 1)
+
+            # Format the date string
+            incremented_month_str = incremented_month_datetime.strftime('%Y-%m-%d %H:%M:%S')
+
+            # Repeat the value in column D
+            service.values().update(spreadsheetId=spreadsheet_id, range=f'D{new_row_index}',
+                                    body={'values': [[chatgpt_response_d]]}, valueInputOption='RAW').execute()
+
+            # Writing incremented date to column E
+            service.values().update(spreadsheetId=spreadsheet_id, range=f'E{new_row_index}',
+                                    body={'values': [[incremented_month_str]]},
+                                    valueInputOption='USER_ENTERED').execute()
 
         return chatgpt_response_b, chatgpt_response_c
 
@@ -98,6 +174,8 @@ def write_to_sheet(spreadsheet_id: str, column: str, values: List[List[Any]]):
                                 valueInputOption='RAW').execute()
 
         return None
+
+
 
 
 

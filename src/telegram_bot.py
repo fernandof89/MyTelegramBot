@@ -12,13 +12,21 @@ logging.basicConfig(
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_message(chat_id=update.effective_chat.id, text="I'm a bot, please talk to me!")
 
+AUTHORIZED_USERS = [1249737429, 1232363365]  # Replace these numbers with your actual Telegram IDs
+
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Check if the user is authorized
+    if update.effective_user.id not in AUTHORIZED_USERS:
+        await context.bot.send_message(chat_id=update.effective_chat.id, text="You are not authorized to use this bot.")
+        return
+
     logging.info(f"Received update_id: {update.update_id}, text: {update.message.text}")
     user_message = update.message.text
-    write_to_sheet('1O4fKy9WYVEljNWQjC73mf3WBcIBnC_sOOZNnQhLg_pc', 'A', [[user_message]])  # Only this line is needed.
+    chatgpt_response_b, chatgpt_response_c = write_to_sheet('1O4fKy9WYVEljNWQjC73mf3WBcIBnC_sOOZNnQhLg_pc', 'A',
+                                                            [[user_message]])
+    logging.info(f'ChatGPT Response B: {chatgpt_response_b}')
+    logging.info(f'ChatGPT Response C: {chatgpt_response_c}')
     await context.bot.send_message(chat_id=update.effective_chat.id, text="Message received!")
-
-
 
 
 if __name__ == '__main__':
