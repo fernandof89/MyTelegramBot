@@ -1,6 +1,6 @@
 import openai
 
-api_key = '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'  # replace YOUR_API_KEY with your actual API key
+api_key = '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'  # replace YOUR_API_KEY with your actual API key
 
 # Authenticate with the OpenAI API
 openai.api_key = api_key
